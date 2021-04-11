@@ -1,0 +1,40 @@
+{
+	"doctors": [
+		{
+			"person": {
+				"id": "d1",
+				"name": "Apple",
+				"age": 24
+			},
+			"department": "Dep1"
+		}
+	],
+	"patients": [
+		{
+			"patient_info": {
+				"person": {
+					"id": "p1",
+					"name": "Jack",
+					"age": 44
+				},
+				"birthday": "1980-4-10",
+				"isMarried": true,
+				"career": "career1",
+				"address": "Beijing,China"
+			},
+			"patient_records": [
+				{
+					"type": "Type1",
+					"time": "2021-4-7 13:00:45",
+					"content": {},
+					"signed_by": {
+						"id": "d1",
+						"name": "Apple",
+						"age": 24,
+						"department": "Dep1"
+					}
+				}
+			]
+		}
+	]
+}
