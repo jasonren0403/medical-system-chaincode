@@ -9,6 +9,7 @@ import (
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"io/ioutil"
+	"log"
 	"time"
 )
 
@@ -19,23 +20,14 @@ type MedicalSystem struct {
 }
 
 func (s *MedicalSystem) Init(stub shim.ChaincodeStubInterface) peer.Response {
-	return shim.Success(nil)
-}
-
-func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
-	return shim.Success(nil)
-}
-
-func (s *MedicalSystem) InitLedger() error {
-
 	content, err := ioutil.ReadFile("init.json")
 	if err != nil {
-		return err
+		return shim.Error(err.Error())
 	}
 	var m map[string][]interface{}
 	err = json.Unmarshal(content, &m)
 	if err != nil {
-		return err
+		return shim.Error(err.Error())
 	}
 	doctors, res := m["doctors"]
 	if res {
@@ -44,11 +36,20 @@ func (s *MedicalSystem) InitLedger() error {
 			err := mapstructure.Decode(v, &doctor)
 			if err != nil {
 				fmt.Println("error on decoding doctor info,", err)
-				return err
+				return shim.Error(err.Error())
 			}
 			fmt.Println(doctor)
+			dbyte, err := json.Marshal(doctor)
+			if err != nil {
+				return shim.Error(err.Error())
+			}
+			err = stub.PutState("Doctor"+doctor.ID, dbyte)
+			if err != nil {
+				return shim.Error(err.Error())
+			}
 		}
 	}
+	log.Println("Doctor info init success")
 	patients, res := m["patients"]
 	if res {
 		for _, v := range patients {
@@ -57,22 +58,25 @@ func (s *MedicalSystem) InitLedger() error {
 			err = json.Unmarshal(_byte, &rec)
 			if err != nil {
 				fmt.Println("error on decoding patient json,", err)
-				return err
+				return shim.Error(err.Error())
 			}
 			fmt.Println(rec)
+			pbyte, err := json.Marshal(rec)
+			if err != nil {
+				return shim.Error(err.Error())
+			}
+			err = stub.PutState("Patient"+rec.PatientInfo.ID, pbyte)
+			if err != nil {
+				return shim.Error(err.Error())
+			}
 		}
 	}
+	log.Println("Patient info and records init success")
+	return shim.Success(nil)
+}
 
-	//for i, record := range mrs {
-	//	mrBytes, _ := json.Marshal(record)
-	//	fmt.Println(string(mrBytes))
-	//	err := ctx.GetStub().PutState("Patient"+strconv.Itoa(i), mrBytes)
-	//	if err != nil {
-	//		return fmt.Errorf("Fail to put to world state. %s\n", err.Error())
-	//	}
-	//}
-
-	return nil
+func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
+	return shim.Success(nil)
 }
 
 func (s *MedicalSystem) InitNewRecord(ctx contractapi.TransactionContextInterface, record *asset.MedicalRecord) error {
