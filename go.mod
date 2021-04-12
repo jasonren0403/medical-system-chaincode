@@ -8,6 +8,7 @@ require (
 	github.com/hyperledger/fabric-contract-api-go v1.1.1
 	github.com/hyperledger/fabric-protos-go v0.0.0-20200424173316-dd554ba3746e
 	github.com/shopspring/decimal v1.2.0 // indirect
+	github.com/stretchr/testify v1.5.1
 )
 
 //run 'go mod tidy' to add lacked package and remove unused package

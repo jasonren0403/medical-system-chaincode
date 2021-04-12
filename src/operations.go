@@ -38,7 +38,7 @@ func (s *MedicalSystem) Init(stub shim.ChaincodeStubInterface) peer.Response {
 				fmt.Println("error on decoding doctor info,", err)
 				return shim.Error(err.Error())
 			}
-			fmt.Println(doctor)
+			log.Println("Decoded doctor info:", doctor)
 			dbyte, err := json.Marshal(doctor)
 			if err != nil {
 				return shim.Error(err.Error())
@@ -60,7 +60,7 @@ func (s *MedicalSystem) Init(stub shim.ChaincodeStubInterface) peer.Response {
 				fmt.Println("error on decoding patient json,", err)
 				return shim.Error(err.Error())
 			}
-			fmt.Println(rec)
+			log.Println("Decoded patient info:", rec)
 			pbyte, err := json.Marshal(rec)
 			if err != nil {
 				return shim.Error(err.Error())

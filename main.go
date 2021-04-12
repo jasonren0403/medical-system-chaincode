@@ -5,9 +5,13 @@ import (
 	"log"
 )
 
-//fabric-samples -> chaincode-docker-devmode
+/* https://github.com/hyperledger/fabric-samples/tree/release-1.4/chaincode-docker-devmode */
 //docker-compose -f docker-compose-simple.yaml up
 //docker exec -it chaincode sh
+//cd chaincode_example02/go
+//go build -o chaincode_example02
+//CORE_PEER_ADDRESS=peer:7052 CORE_CHAINCODE_ID_NAME=mycc:0 ./chaincode_example02
+//docker exec -it cli bash
 //go mod vendor
 //go build
 func main() {
