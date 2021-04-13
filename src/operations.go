@@ -58,7 +58,7 @@ func (s *MedicalSystem) Init(stub shim.ChaincodeStubInterface) peer.Response {
 			if err != nil {
 				return shim.Error(err.Error())
 			}
-			err = stub.PutState("Doctor"+doctor.ID, dbyte)
+			err = stub.PutState(utils.CreateDoctorKey(doctor.ID), dbyte)
 			if err != nil {
 				return shim.Error(err.Error())
 			}
@@ -81,8 +81,8 @@ func (s *MedicalSystem) Init(stub shim.ChaincodeStubInterface) peer.Response {
 			if err != nil {
 				return shim.Error(err.Error())
 			}
-			err = stub.PutState("Patient"+rec.PatientInfo.ID, opbyte)
-			err = stub.PutState("PatientRecord"+rec.PatientInfo.ID, prbyte)
+			err = stub.PutState(utils.CreatePatientInfoKey(rec.PatientInfo.ID), opbyte)
+			err = stub.PutState(utils.CreatePatientRecordKey(rec.PatientInfo.ID), prbyte)
 			if err != nil {
 				return shim.Error(err.Error())
 			}
