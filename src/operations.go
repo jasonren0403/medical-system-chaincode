@@ -96,9 +96,11 @@ func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 	log.Println("Invoke() called")
 	fun, params := stub.GetFunctionAndParameters()
 	log.Println("Params:", params)
+	var payload []byte
 	switch fun {
 	case "InitNewRecord":
 		log.Println("Init new record called")
+		//payload,_ = json.Marshal(res)
 	case "SetPatientInfo":
 		log.Println("Set patient info called")
 	case "GetMedicalRecord":
@@ -106,30 +108,34 @@ func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 	case "isValidDoctor":
 		doc := params[0]
 		log.Printf("Test if %s is a valid doctor", doc)
-		//s.IsValidDoctor()
+		var d asset.Doctor
+		err := json.Unmarshal([]byte(doc), &d)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		res := s.IsValidDoctor(stub, d)
+		payload, _ = json.Marshal(res)
 	case "GetPatientInfoByPID":
 		if len(params) == 0 {
 			return shim.Error("Support a pid(string) for this call!")
 		}
 		log.Println("Get patient info by pid called", "(pid =", params[0], ")")
-		/*
-			pInfo, err := s.GetPatientInfoByPID(<stub>,params[0])
-			// how to call function with (ctx contractapi.TransactionContextInterface) Signature?
-			if err!=nil{
-				return shim.Error(err.Error())
-			}
-			log.Println(pInfo)
-		*/
+		pInfo, err := s.GetPatientInfoByPID(stub, params[0])
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		log.Println(pInfo)
+		payload, _ = json.Marshal(pInfo)
 	default:
 		log.Println("Unknown function ", fun, "called")
 		return shim.Error("Nothing has called")
 	}
-	return shim.Success([]byte("success"))
+	return shim.Success(payload)
 }
 
 /* check if the doctor exists in the world state */
-func (s *MedicalSystem) IsValidDoctor(ctx contractapi.TransactionContextInterface, doctor asset.Doctor) bool {
-	dbyte, err := ctx.GetStub().GetState(utils.CreateDoctorKey(doctor.ID))
+func (s *MedicalSystem) IsValidDoctor(stub shim.ChaincodeStubInterface, doctor asset.Doctor) bool {
+	dbyte, err := stub.GetState(utils.CreateDoctorKey(doctor.ID))
 	if err != nil {
 		return false
 	}
@@ -137,9 +143,9 @@ func (s *MedicalSystem) IsValidDoctor(ctx contractapi.TransactionContextInterfac
 }
 
 /* append a new record to the patient's records */
-func (s *MedicalSystem) InitNewRecord(ctx contractapi.TransactionContextInterface, patientID string,
+func (s *MedicalSystem) InitNewRecord(stub shim.ChaincodeStubInterface, patientID string,
 	_type string, time string, content interface{}, signature asset.Doctor) error {
-	records, err := s.GetMedicalRecord(ctx, patientID)
+	records, err := s.GetMedicalRecord(stub, patientID)
 	if err != nil {
 		return err
 	}
@@ -151,14 +157,14 @@ func (s *MedicalSystem) InitNewRecord(ctx contractapi.TransactionContextInterfac
 	}
 	records = append(records, newRec)
 	rec, _ := json.Marshal(records)
-	return ctx.GetStub().PutState(utils.CreatePatientRecordKey(patientID), rec)
+	return stub.PutState(utils.CreatePatientRecordKey(patientID), rec)
 }
 
 /* Set the patient's info using key and values */
 /* We define that the patient's ID and name cannot be changed */
-func (s *MedicalSystem) SetPatientInfo(ctx contractapi.TransactionContextInterface, ID string,
+func (s *MedicalSystem) SetPatientInfo(stub shim.ChaincodeStubInterface, ID string,
 	kvs map[string]interface{}) error {
-	pinfo, err := s.GetPatientInfoByPID(ctx, ID)
+	pinfo, err := s.GetPatientInfoByPID(stub, ID)
 	// reject if the patient's info is nil or error occurs
 	if err != nil {
 		return err
@@ -191,13 +197,13 @@ func (s *MedicalSystem) SetPatientInfo(ctx contractapi.TransactionContextInterfa
 
 	rec, _ := json.Marshal(pinfo)
 
-	return ctx.GetStub().PutState("Patient"+ID, rec)
+	return stub.PutState("Patient"+ID, rec)
 }
 
 /* Get the patient's info by patient's ID */
-func (s *MedicalSystem) GetPatientInfoByPID(ctx contractapi.TransactionContextInterface,
+func (s *MedicalSystem) GetPatientInfoByPID(stub shim.ChaincodeStubInterface,
 	patientID string) (*asset.OutPatient, error) {
-	existing, err := ctx.GetStub().GetState(utils.CreatePatientInfoKey(patientID))
+	existing, err := stub.GetState(utils.CreatePatientInfoKey(patientID))
 	if err != nil {
 		return nil, errors.New("Unable to interact with world state")
 	}
@@ -210,9 +216,9 @@ func (s *MedicalSystem) GetPatientInfoByPID(ctx contractapi.TransactionContextIn
 }
 
 /* Get the patient's record(s) by patient's ID */
-func (s *MedicalSystem) GetMedicalRecord(ctx contractapi.TransactionContextInterface,
+func (s *MedicalSystem) GetMedicalRecord(stub shim.ChaincodeStubInterface,
 	patientID string) ([]asset.Record, error) {
-	mr, err := ctx.GetStub().GetState(utils.CreatePatientRecordKey(patientID))
+	mr, err := stub.GetState(utils.CreatePatientRecordKey(patientID))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to read from world state. %s", err.Error())
 	}
@@ -227,7 +233,7 @@ func (s *MedicalSystem) GetMedicalRecord(ctx contractapi.TransactionContextInter
 }
 
 /* Get the patient's record(s) by date range, [startDate,endDate) */
-func (s *MedicalSystem) GetMRbyDateRange(ctx contractapi.TransactionContextInterface,
+func (s *MedicalSystem) GetMRbyDateRange(stub shim.ChaincodeStubInterface,
 	patientID string, startDate time.Time, endDate time.Time) ([]asset.MedicalRecord, error) {
 	return nil, nil
 }

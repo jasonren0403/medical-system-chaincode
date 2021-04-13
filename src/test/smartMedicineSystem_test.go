@@ -7,7 +7,7 @@ import (
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/stretchr/testify/assert"
 	"log"
-	"strconv"
+	"os"
 	"testing"
 
 	// Use these two package for testing and mocking contract environment
@@ -24,27 +24,41 @@ const (
 	internal_name = "smartMedicineSystem"
 )
 
+var stub *shimtest.MockStub
+
 //func checkXXX(t *testing.T, stub *shimtest.MockStub, args...)
 //stub.mockInit(string,args)
 //shimtest.newMockStub("",contract)
 //[][]byte{[]byte("set"), []byte("a"), []byte("100")}
 //stub.mockInvoke(string,args)
-func TestInitLedger(t *testing.T) {
+func TestMain(m *testing.M) {
+	log.Println("===test main===")
+	setup()
+	exitcode := m.Run() // run all cases
+	tearDown()
+	os.Exit(exitcode)
+}
+
+func setup() {
+	log.Println("===setup===")
 	cc := new(smartMedicineSystem.MedicalSystem)
-	stub := shimtest.NewMockStub(internal_name, cc)
+	stub = shimtest.NewMockStub(internal_name, cc)
+}
+
+func tearDown() {
+	log.Println("===tearDown===")
+}
+
+func TestInitLedger(t *testing.T) {
+	assert.FileExists(t, "../../init.json", "Init file does not exist!")
 	result := stub.MockInit(test_UUID, nil)
-	if result.Status != shim.OK {
-		log.Println("result status is not OK but " + strconv.Itoa(int(result.Status)))
-		log.Fatalln(result)
-	}
+	assert.EqualValuesf(t, shim.OK, result.Status, "Result status is not OK, get %d", result.Status)
 	assert.NotNil(t, stub.Name, "Stub's name is nil!")
 	assert.EqualValues(t, internal_name, stub.Name, "Stub's name is incorrect!")
 }
 
 func TestPatientInfoGet(t *testing.T) {
 	patientID := "p1"
-	cc := new(smartMedicineSystem.MedicalSystem)
-	stub := shimtest.NewMockStub(internal_name, cc)
 	stub.MockInit(test_UUID, nil)
 	res := stub.MockInvoke(test_UUID, [][]byte{[]byte("GetPatientInfoByPID"), []byte(patientID)})
 	// todo:change payload return and use assert.Same for testing
@@ -59,9 +73,6 @@ func TestIsValidDoctor(t *testing.T) {
 		Department: "Dep1",
 	}
 	binDoctor, _ := json.Marshal(doctor)
-
-	cc := new(smartMedicineSystem.MedicalSystem)
-	stub := shimtest.NewMockStub(internal_name, cc)
 	stub.MockInit(test_UUID, nil)
 	res := stub.MockInvoke(test_UUID, [][]byte{[]byte("isValidDoctor"), binDoctor})
 	assert.EqualValues(t, "success", string(res.Payload), "It should be a valid doctor")
@@ -69,8 +80,6 @@ func TestIsValidDoctor(t *testing.T) {
 
 func TestGetMedicalRecord(t *testing.T) {
 	patientID := "p1"
-	cc := new(smartMedicineSystem.MedicalSystem)
-	stub := shimtest.NewMockStub(internal_name, cc)
 	stub.MockInit(test_UUID, nil)
 	res := stub.MockInvoke(test_UUID, [][]byte{[]byte("GetMedicalRecord"), []byte(patientID)})
 	// todo:change payload return and use assert.Same for testing
@@ -82,8 +91,6 @@ func TestPatientInfoSet(t *testing.T) {
 	newInfo := make(map[string]interface{})
 	newInfo["isMarried"] = false
 	binInfo, _ := json.Marshal(newInfo)
-	cc := new(smartMedicineSystem.MedicalSystem)
-	stub := shimtest.NewMockStub(internal_name, cc)
 	stub.MockInit(test_UUID, nil)
 	res := stub.MockInvoke(test_UUID, [][]byte{[]byte("SetPatientInfo"), []byte(patientID), binInfo})
 	// todo:change payload return and use assert.Same for testing
