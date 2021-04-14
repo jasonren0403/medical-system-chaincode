@@ -20,7 +20,9 @@
 				"birthday": "1980-4-10",
 				"isMarried": true,
 				"career": "career1",
-				"address": "Beijing,China"
+				"address": "addr1",
+				"country": "China",
+				"region": "Beijing"
 			},
 			"patient_records": [
 				{

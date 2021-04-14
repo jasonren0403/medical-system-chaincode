@@ -93,23 +93,65 @@ func (s *MedicalSystem) Init(stub shim.ChaincodeStubInterface) peer.Response {
 }
 
 func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
-	log.Println("Invoke() called")
 	fun, params := stub.GetFunctionAndParameters()
-	log.Println("Params:", params)
+	log.Printf("Invoke() called >> \n\t%-10s%s\n\t%-10s%s", "Params:", params, "Function:", fun)
 	var payload []byte
 	switch fun {
 	case "InitNewRecord":
-		log.Println("Init new record called")
-		//payload,_ = json.Marshal(res)
+		if len(params) < 5 {
+			return shim.Error("Not enough param for new patient record init!")
+		}
+		pID := params[0]
+		ty := params[1]
+		tm := params[2]
+		cnt, _ := utils.JsonToMap(params[3])
+		var doc asset.Doctor
+		_ = json.Unmarshal([]byte(params[4]), &doc)
+		err := s.InitNewRecord(stub, pID, ty, tm, cnt, doc)
+		if err != nil {
+			return shim.Error("Error in init new record for patientID " + pID)
+		}
+		var rs []asset.Record
+		rs, err = s.GetMedicalRecord(stub, pID)
+		if err != nil {
+			return shim.Error("Error fetching new records for patientID " + pID)
+		}
+		payload, _ = json.Marshal(rs)
 	case "SetPatientInfo":
-		log.Println("Set patient info called")
+		if len(params) < 2 {
+			return shim.Error("Not enough param for patient info setting!")
+		}
+		pid := params[0]
+		m, err := utils.JsonToMap(params[1])
+		if err != nil {
+			log.Println(params[1])
+			return shim.Error("Error params -> map!")
+		}
+		err = s.SetPatientInfo(stub, pid, m)
+		if err != nil {
+			log.Println(err)
+			return shim.Error("Set patient info error!")
+		}
+		ninfo, err := s.GetPatientInfoByPID(stub, pid)
+		if err != nil {
+			log.Println(err)
+			return shim.Error("Reget new patient info error!")
+		}
+		payload, _ = json.Marshal(ninfo)
 	case "GetMedicalRecord":
-		log.Println("Get medical record called")
-	case "isValidDoctor":
+		if len(params) == 0 {
+			return shim.Error("Support a pid(string) for this call!")
+		}
+		pmrs, err := s.GetMedicalRecord(stub, params[0])
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		payload, _ = json.Marshal(pmrs)
+	case "IsValidDoctor":
 		doc := params[0]
-		log.Printf("Test if %s is a valid doctor", doc)
 		var d asset.Doctor
 		err := json.Unmarshal([]byte(doc), &d)
+		log.Printf("Test if %s is a valid doctor", d.String())
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -119,12 +161,11 @@ func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 		if len(params) == 0 {
 			return shim.Error("Support a pid(string) for this call!")
 		}
-		log.Println("Get patient info by pid called", "(pid =", params[0], ")")
+		log.Println("Get patient info by pid called", "( pid =", params[0], ")")
 		pInfo, err := s.GetPatientInfoByPID(stub, params[0])
 		if err != nil {
 			return shim.Error(err.Error())
 		}
-		log.Println(pInfo)
 		payload, _ = json.Marshal(pInfo)
 	default:
 		log.Println("Unknown function ", fun, "called")
@@ -137,9 +178,12 @@ func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 func (s *MedicalSystem) IsValidDoctor(stub shim.ChaincodeStubInterface, doctor asset.Doctor) bool {
 	dbyte, err := stub.GetState(utils.CreateDoctorKey(doctor.ID))
 	if err != nil {
+		log.Println(err)
 		return false
 	}
-	return dbyte != nil
+	var _doctor asset.Doctor
+	_ = json.Unmarshal(dbyte, &_doctor)
+	return dbyte != nil && doctor == _doctor
 }
 
 /* append a new record to the patient's records */
@@ -148,6 +192,9 @@ func (s *MedicalSystem) InitNewRecord(stub shim.ChaincodeStubInterface, patientI
 	records, err := s.GetMedicalRecord(stub, patientID)
 	if err != nil {
 		return err
+	}
+	if !s.IsValidDoctor(stub, signature) {
+		return errors.New("not a valid doctor in database")
 	}
 	newRec := asset.Record{
 		Type:      _type,
@@ -173,7 +220,7 @@ func (s *MedicalSystem) SetPatientInfo(stub shim.ChaincodeStubInterface, ID stri
 		return errors.New("PInfo is nil")
 	}
 	for k, v := range kvs {
-		switch strings.ToLower(k) {
+		switch k {
 		case "country":
 			pinfo.Country = v.(string)
 		case "region":
@@ -197,7 +244,7 @@ func (s *MedicalSystem) SetPatientInfo(stub shim.ChaincodeStubInterface, ID stri
 
 	rec, _ := json.Marshal(pinfo)
 
-	return stub.PutState("Patient"+ID, rec)
+	return stub.PutState(utils.CreatePatientInfoKey(ID), rec)
 }
 
 /* Get the patient's info by patient's ID */
@@ -210,9 +257,9 @@ func (s *MedicalSystem) GetPatientInfoByPID(stub shim.ChaincodeStubInterface,
 	if existing == nil {
 		return nil, fmt.Errorf("Current patient <PID=%s> does not exist", patientID)
 	}
-	var patient *asset.OutPatient
-	err = json.Unmarshal(existing, patient)
-	return patient, err
+	var patient asset.OutPatient
+	err = json.Unmarshal(existing, &patient)
+	return &patient, err
 }
 
 /* Get the patient's record(s) by patient's ID */
@@ -227,7 +274,7 @@ func (s *MedicalSystem) GetMedicalRecord(stub shim.ChaincodeStubInterface,
 		return nil, fmt.Errorf("%s does not exist", patientID)
 	}
 
-	record := make([]asset.Record, 100)
+	var record []asset.Record
 	_ = json.Unmarshal(mr, &record)
 	return record, nil
 }
