@@ -15,10 +15,6 @@ func UnknownTransactionHandler(ctx contractapi.TransactionContextInterface) erro
 	return fmt.Errorf("invalid function %s passed with args %v", fcn, args)
 }
 
-func ReadInitDataFromFile(filename string) (interface{}, error) {
-	return nil, nil
-}
-
 // -- json/struct/map helper -- //
 
 func JsonToStruct(jsonstring string, struType struct{}) (struct{}, error) {

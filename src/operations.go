@@ -1,6 +1,7 @@
 package smartMedicineSystem
 
 import (
+	"bytes"
 	"ccode/src/asset"
 	"ccode/src/utils"
 	"encoding/json"
@@ -275,7 +276,10 @@ func (s *MedicalSystem) GetMedicalRecord(stub shim.ChaincodeStubInterface,
 	}
 
 	var record []asset.Record
-	_ = json.Unmarshal(mr, &record)
+	// keep the precision
+	dec := json.NewDecoder(bytes.NewBuffer(mr))
+	dec.UseNumber()
+	_ = dec.Decode(&record)
 	return record, nil
 }
 
