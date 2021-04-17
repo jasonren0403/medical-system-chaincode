@@ -80,6 +80,7 @@ func IsValidDoctor(doctor asset.Doctor) peer.Response {
 	return stub.MockInvoke(test_UUID, [][]byte{[]byte("IsValidDoctor"), binDoctor})
 }
 
+// -- Tests -- //
 func TestInitLedger(t *testing.T) {
 	assert.FileExists(t, "../../init.json", "Init file does not exist!")
 	result := stub.MockInit(test_UUID, nil)
