@@ -7,12 +7,21 @@ import (
 	"testing"
 )
 
-func TestRandom(t *testing.T) {
+func TestRandomNum(t *testing.T) {
 	numr := utils.NewGenerator(16, "num")
 	assert.True(t, numr.RandPrimeInt().IsInt64(), "Returning value is prime int")
 	num := numr.RandIntRange(114514, 64)
 	assert.GreaterOrEqual(t, num.Int64(), int64(64), "Generated random num is greater than 64")
 	assert.Less(t, num.Int64(), int64(114514), "Generated random num is less than 114514")
+}
+
+func TestRandomByte(t *testing.T) {
+	rb := utils.NewGenerator(16, "byte")
+	rbstr := rb.RandByte()
+	assert.Len(t, rbstr, 16, "Generated random byte[] should be", 16)
+}
+
+func TestRandomStr(t *testing.T) {
 	strr := utils.NewGenerator(32, "string")
 	rstr := strr.RandStr()
 	assert.Len(t, rstr, 32, "Generated random string should be", 32)

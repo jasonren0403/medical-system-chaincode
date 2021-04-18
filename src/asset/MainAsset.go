@@ -2,7 +2,6 @@ package asset
 
 import (
 	"encoding/json"
-	_ "github.com/hyperledger/fabric-contract-api-go/contractapi"
 	"strings"
 	"time"
 )
@@ -16,7 +15,7 @@ type MedicalRecord struct {
 
 type Record struct {
 	Type      string      `json:"type"`
-	Time      string      `json:"time"`
+	Time      string      `json:"time" validate:"required,datetime=2006-01-02 15:04:05"`
 	Content   interface{} `json:"content"`
 	Signature Doctor      `json:"signed_by"`
 }

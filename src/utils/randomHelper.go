@@ -47,3 +47,12 @@ func (r *RandomGen) RandStr() string {
 	}
 	return string(result)
 }
+
+func (r *RandomGen) RandByte() []byte {
+	b := make([]byte, r.Len)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}

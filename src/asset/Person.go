@@ -6,21 +6,21 @@ import (
 )
 
 type Person struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Age  int    `json:"age"`
+	ID   string `json:"id" validate:"required"`
+	Name string `json:"name" validate:"required"`
+	Age  int    `json:"age" validate:"required,gte=0,lte=130"`
 }
 
 type Doctor struct {
-	Person
-	Department string `json:"department"`
+	Person     `json:"person"`
+	Department string `json:"department" validate:"required"`
 }
 
 type OutPatient struct {
 	Person    `json:"person"`
 	Country   string `json:"country"`
 	Region    string `json:"region"`
-	Birthday  string `json:"birthday"`
+	Birthday  string `json:"birthday" validate:"required,datetime=2006-01-02"`
 	IsMarried bool   `json:"isMarried"`
 	Career    string `json:"career"`
 	Address   string `json:"address"`
