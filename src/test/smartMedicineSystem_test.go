@@ -40,6 +40,7 @@ func setup() {
 	log.Println("===setup===")
 	cc := new(smartMedicineSystem.MedicalSystem)
 	stub = shimtest.NewMockStub(internal_name, cc)
+	_ = stub.MockInit(test_UUID, nil)
 }
 
 func tearDown() {
@@ -78,6 +79,10 @@ func SetPatientInfo(pid string, newInfo map[string]interface{}) peer.Response {
 func IsValidDoctor(doctor asset.Doctor) peer.Response {
 	binDoctor, _ := json.Marshal(doctor)
 	return stub.MockInvoke(test_UUID, [][]byte{[]byte("IsValidDoctor"), binDoctor})
+}
+
+func QueryDoctorByID(dID string) peer.Response {
+	return stub.MockInvoke(test_UUID, [][]byte{[]byte("QueryDoctorByID"), []byte(dID)})
 }
 
 // -- Tests -- //
@@ -143,6 +148,14 @@ func TestPatientInfoGet(t *testing.T) {
 	var pInfo asset.OutPatient
 	err := json.Unmarshal(res.Payload, &pInfo)
 	assert.NoError(t, err, "there should be no problem unmarshalling returning payload ")
+}
+
+func TestQueryDoctorByID(t *testing.T) {
+	existingID := "d1"
+	res := QueryDoctorByID(existingID)
+	assert.NotEmpty(t, res, existingID, "should be found at state map")
+	res = QueryDoctorByID("notexist")
+	assert.EqualValues(t, 500, res.Status, "invalid doctor should not exist")
 }
 
 func TestIsValidDoctor(t *testing.T) {

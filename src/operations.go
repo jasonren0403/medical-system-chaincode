@@ -158,6 +158,13 @@ func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 		}
 		res := s.IsValidDoctor(stub, d)
 		payload, _ = json.Marshal(res)
+	case "QueryDoctorByID":
+		dID := params[0]
+		res, err := s.QueryDoctorByID(stub, dID)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		payload, _ = json.Marshal(res)
 	case "GetPatientInfoByPID":
 		if len(params) == 0 {
 			return shim.Error("Support a pid(string) for this call!")
@@ -175,7 +182,7 @@ func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 	return shim.Success(payload)
 }
 
-/* check if the doctor exists in the world state */
+// IsValidDoctor /* check if the doctor exists in the world state */
 func (s *MedicalSystem) IsValidDoctor(stub shim.ChaincodeStubInterface, doctor asset.Doctor) bool {
 	dbyte, err := stub.GetState(utils.CreateDoctorKey(doctor.ID))
 	if err != nil {
@@ -187,7 +194,21 @@ func (s *MedicalSystem) IsValidDoctor(stub shim.ChaincodeStubInterface, doctor a
 	return dbyte != nil && doctor == _doctor
 }
 
-/* append a new record to the patient's records */
+func (s *MedicalSystem) QueryDoctorByID(stub shim.ChaincodeStubInterface,
+	dID string) (*asset.Doctor, error) {
+	existing, err := stub.GetState(utils.CreateDoctorKey(dID))
+	if err != nil {
+		return nil, errors.New("Unable to interact with world state")
+	}
+	if existing == nil {
+		return nil, fmt.Errorf("Current doctor <dID=%s> does not exist", dID)
+	}
+	var doc asset.Doctor
+	err = json.Unmarshal(existing, &doc)
+	return &doc, err
+}
+
+// InitNewRecord /* append a new record to the patient's records */
 func (s *MedicalSystem) InitNewRecord(stub shim.ChaincodeStubInterface, patientID string,
 	_type string, time string, content interface{}, signature asset.Doctor) error {
 	records, err := s.GetMedicalRecord(stub, patientID)
@@ -208,7 +229,7 @@ func (s *MedicalSystem) InitNewRecord(stub shim.ChaincodeStubInterface, patientI
 	return stub.PutState(utils.CreatePatientRecordKey(patientID), rec)
 }
 
-/* Set the patient's info using key and values */
+// SetPatientInfo /* Set the patient's info using key and values */
 /* We define that the patient's ID and name cannot be changed */
 func (s *MedicalSystem) SetPatientInfo(stub shim.ChaincodeStubInterface, ID string,
 	kvs map[string]interface{}) error {
@@ -248,7 +269,7 @@ func (s *MedicalSystem) SetPatientInfo(stub shim.ChaincodeStubInterface, ID stri
 	return stub.PutState(utils.CreatePatientInfoKey(ID), rec)
 }
 
-/* Get the patient's info by patient's ID */
+// GetPatientInfoByPID /* Get the patient's info by patient's ID */
 func (s *MedicalSystem) GetPatientInfoByPID(stub shim.ChaincodeStubInterface,
 	patientID string) (*asset.OutPatient, error) {
 	existing, err := stub.GetState(utils.CreatePatientInfoKey(patientID))
@@ -263,7 +284,7 @@ func (s *MedicalSystem) GetPatientInfoByPID(stub shim.ChaincodeStubInterface,
 	return &patient, err
 }
 
-/* Get the patient's record(s) by patient's ID */
+// GetMedicalRecord /* Get the patient's record(s) by patient's ID */
 func (s *MedicalSystem) GetMedicalRecord(stub shim.ChaincodeStubInterface,
 	patientID string) ([]asset.Record, error) {
 	mr, err := stub.GetState(utils.CreatePatientRecordKey(patientID))
@@ -283,7 +304,7 @@ func (s *MedicalSystem) GetMedicalRecord(stub shim.ChaincodeStubInterface,
 	return record, nil
 }
 
-/* Get the patient's record(s) by date range, [startDate,endDate) */
+// GetMRbyDateRange /* Get the patient's record(s) by date range, [startDate,endDate) */
 func (s *MedicalSystem) GetMRbyDateRange(stub shim.ChaincodeStubInterface,
 	patientID string, startDate time.Time, endDate time.Time) ([]asset.MedicalRecord, error) {
 	return nil, nil
