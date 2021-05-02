@@ -29,6 +29,7 @@ type OutPatient struct {
 /**
  * Getters And Setters
  */
+
 func (p Person) GetName() string {
 	return p.Name
 }

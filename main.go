@@ -1,6 +1,8 @@
 package main
 
 import (
+	smartMedicineSystem "ccode/src"
+	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 	_ "github.com/hyperledger/fabric-contract-api-go/contractapi/utils"
 	"log"
 )
@@ -22,19 +24,18 @@ func main() {
 		}
 	}()
 
-	/*
-		smartMedicineContract := new(smartMedicineSystem.MedicalSystem)
-		smartMedicineContract.UnknownTransaction = smartMedicineSystem.UnknownTransactionHandler
-		//smartMedicineContract.BeforeTransaction = utils.UndefinedInterface{}
+	smartMedicineContract := new(smartMedicineSystem.MedicalSystem)
+	//smartMedicineContract.UnknownTransaction = smartMedicineSystem.UnknownTransactionHandler
+	//smartMedicineContract.BeforeTransaction = utils.UndefinedInterface{}
 
-		cc, err := contractapi.NewChaincode(smartMedicineContract)
-		if err != nil {
-			log.Panicf("Error creating smart medicine system chaincode: %v", err)
-		}
-		cc.DefaultContract = smartMedicineContract.GetName()
+	cc, err := contractapi.NewChaincode(smartMedicineContract)
+	if err != nil {
+		log.Panicf("Error creating smart medicine system chaincode: %v", err)
+	}
+	cc.DefaultContract = smartMedicineContract.GetName()
 
-		if err := cc.Start(); err != nil {
-			log.Panicf("Error starting smart medicine system chaincode: %v", err)
-		}
-	*/
+	if err := cc.Start(); err != nil {
+		log.Panicf("Error starting smart medicine system chaincode: %v", err)
+	}
+
 }

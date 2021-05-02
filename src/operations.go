@@ -24,6 +24,7 @@ type MedicalSystem struct {
 	contractapi.Contract
 }
 
+// Init returns {"status": 200}
 func (s *MedicalSystem) Init(stub shim.ChaincodeStubInterface) peer.Response {
 	log.Println("Init() called")
 	str, _ := os.Getwd()
@@ -51,7 +52,7 @@ func (s *MedicalSystem) Init(stub shim.ChaincodeStubInterface) peer.Response {
 			var doctor asset.Doctor
 			err := mapstructure.Decode(v, &doctor)
 			if err != nil {
-				fmt.Println("error on decoding doctor info,", err)
+				log.Println("error on decoding doctor info,", err)
 				return shim.Error(err.Error())
 			}
 			log.Println("Decoded doctor info:", doctor)
@@ -73,7 +74,7 @@ func (s *MedicalSystem) Init(stub shim.ChaincodeStubInterface) peer.Response {
 			_byte, _ := json.Marshal(v)
 			err = json.Unmarshal(_byte, &rec)
 			if err != nil {
-				fmt.Println("error on decoding patient json,", err)
+				log.Println("error on decoding patient json,", err)
 				return shim.Error(err.Error())
 			}
 			log.Println("Decoded patient info:", rec)
@@ -157,7 +158,9 @@ func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 			return shim.Error(err.Error())
 		}
 		res := s.IsValidDoctor(stub, d)
-		payload, _ = json.Marshal(res)
+		payload, _ = json.Marshal(struct {
+			Val bool `json:"val"`
+		}{res})
 	case "QueryDoctorByID":
 		dID := params[0]
 		res, err := s.QueryDoctorByID(stub, dID)
@@ -194,6 +197,7 @@ func (s *MedicalSystem) IsValidDoctor(stub shim.ChaincodeStubInterface, doctor a
 	return dbyte != nil && doctor == _doctor
 }
 
+// QueryDoctorByID /* find doctor info by doctor ID */
 func (s *MedicalSystem) QueryDoctorByID(stub shim.ChaincodeStubInterface,
 	dID string) (*asset.Doctor, error) {
 	existing, err := stub.GetState(utils.CreateDoctorKey(dID))

@@ -2,11 +2,30 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/goinggo/mapstructure"
 	"reflect"
 	"strings"
 )
+
+type IndentType int16
+
+const (
+	INDENT_SPACE IndentType = 1
+	INDENT_TAB   IndentType = 2
+)
+
+func (p IndentType) String() string {
+	switch p {
+	case INDENT_SPACE:
+		return "INDENT_SPACE"
+	case INDENT_TAB:
+		return "INDENT_TAB"
+	default:
+		return "UNKNOWN"
+	}
+}
 
 // -- json/struct/map helper -- //
 
@@ -58,4 +77,18 @@ func StructToMap(obj interface{}) map[string]interface{} {
 		data[obj1.Field(i).Name] = obj2.Field(i).Interface()
 	}
 	return data
+}
+
+func IndentedJson(obj interface{}, p IndentType) (string, error) {
+	var indentstr string
+	switch p {
+	case INDENT_SPACE:
+		indentstr = " "
+	case INDENT_TAB:
+		indentstr = "\t"
+	default:
+		return "", errors.New("Bad indent type:" + p.String())
+	}
+	indented, err := json.MarshalIndent(&obj, "", indentstr)
+	return string(indented), err
 }
