@@ -2,11 +2,27 @@
 	"doctors": [
 		{
 			"person": {
-				"id": "d1",
+				"id": "doct1",
 				"name": "Apple",
 				"age": 24
 			},
 			"department": "Dep1"
+		},
+		{
+			"person": {
+				"id": "doct2",
+				"name": "Banana",
+				"age": 25
+			},
+			"department": "Dep1"
+		},
+		{
+			"person": {
+				"id": "doct3",
+				"name": "Catt",
+				"age": 26
+			},
+			"department": "Dep2"
 		}
 	],
 	"patients": [
@@ -26,12 +42,89 @@
 			},
 			"patient_records": [
 				{
+					"id": "p1",
 					"type": "Type1",
 					"time": "2021-4-7 13:00:45",
 					"content": {},
 					"signed_by": {
 						"person": {
-							"id": "d1",
+							"id": "doct1",
+							"name": "Apple",
+							"age": 24
+						},
+						"department": "Dep1"
+					}
+				},
+				{
+					"id": "p1",
+					"type": "Type2",
+					"time": "2021-4-8 11:45:14",
+					"content": {
+						"key1": true,
+						"key2": "string"
+					},
+					"signed_by": {
+						"person": {
+							"id": "doct2",
+							"name": "Banana",
+							"age": 25
+						},
+						"department": "Dep1"
+					}
+				},
+				{
+					"id": "p1",
+					"type": "Type3",
+					"time": "2021-5-10 11:45:14",
+					"content": {},
+					"signed_by": {
+						"person": {
+							"id": "doct1",
+							"name": "Apple",
+							"age": 24
+						},
+						"department": "Dep1"
+					}
+				}
+			]
+		},
+		{
+			"patient_info": {
+				"person": {
+					"id": "p2",
+					"name": "Rose",
+					"age": 44
+				},
+				"birthday": "1980-4-10",
+				"isMarried": true,
+				"career": "career2",
+				"address": "addr2",
+				"country": "China",
+				"region": "Beijing"
+			},
+			"patient_records": [
+				{
+					"id": "p2",
+					"type": "Type2",
+					"time": "2021-4-10 11:45:14",
+					"content": {},
+					"signed_by": {
+						"person": {
+							"id": "doct1",
+							"name": "Banana",
+							"age": 25
+						},
+						"department": "Dep1"
+					}
+				},
+				{
+					"id": "p2",
+					"type": "Type3",
+					"time": "2021-5-12 11:45:14",
+					"content": {},
+					"signed_by": {
+						"person": {
+							"id": "doct2",
 							"name": "Apple",
 							"age": 24
 						},

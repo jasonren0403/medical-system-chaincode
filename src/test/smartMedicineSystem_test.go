@@ -78,6 +78,10 @@ func SetPatientInfo(pid string, newInfo map[string]interface{}) peer.Response {
 	return stub.MockInvoke(test_UUID, [][]byte{[]byte("SetPatientInfo"), []byte(pid), binInfo})
 }
 
+func GetAllPatients() peer.Response {
+	return stub.MockInvoke(test_UUID, [][]byte{[]byte("GetAllPatients")})
+}
+
 func IsValidDoctor(doctor asset.Doctor) peer.Response {
 	binDoctor, _ := json.Marshal(doctor)
 	return stub.MockInvoke(test_UUID, [][]byte{[]byte("IsValidDoctor"), binDoctor})
@@ -108,12 +112,13 @@ func TestInitNewRecord(t *testing.T) {
 		"keybool": true,
 	}
 	nRecord := asset.Record{
+		ID:      patientID,
 		Type:    "test2",
 		Time:    "2021-4-14 9:45:11",
 		Content: cnt,
 		Signature: asset.Doctor{
 			Person: asset.Person{
-				ID: "d1", Name: "Apple", Age: 24,
+				ID: "doct2", Name: "Banana", Age: 25,
 			},
 			Department: "Dep1",
 		},
@@ -130,7 +135,7 @@ func TestInitNewRecord(t *testing.T) {
 	dec.UseNumber()
 	err := dec.Decode(&records)
 	assert.NoError(t, err, "No problem should appear unmarshalling")
-	assert.Len(t, records, 2, "There should be 2 records of patient ", patientID)
+	assert.Len(t, records, 4, "There should be 4 records of patient ", patientID)
 	assert.Contains(t, records, nRecord, "The new record should be inserted")
 	// another one
 	res = AddRecord(patientID, asset.Record{
@@ -138,9 +143,9 @@ func TestInitNewRecord(t *testing.T) {
 		Time: time.Now().Format("2006-1-2 15:04:05"),
 		Signature: asset.Doctor{
 			Person: asset.Person{
-				ID: "d1", Name: "Apple", Age: 24,
+				ID: "doct3", Name: "Catt", Age: 26,
 			},
-			Department: "Dep1",
+			Department: "Dep2",
 		},
 	}, map[string]interface{}{
 		"keybool": false,
@@ -155,7 +160,7 @@ func TestInitNewRecord(t *testing.T) {
 	dec.UseNumber()
 	err = dec.Decode(&records)
 	assert.NoError(t, err, "No problem should appear unmarshalling")
-	assert.Len(t, records, 3, "There should be 3 records of patient ", patientID)
+	assert.Len(t, records, 5, "There should be 5 records of patient ", patientID)
 }
 
 func TestPatientInfoGet(t *testing.T) {
@@ -173,7 +178,7 @@ func TestPatientInfoGet(t *testing.T) {
 }
 
 func TestQueryDoctorByID(t *testing.T) {
-	existingID := "d1"
+	existingID := "doct1"
 	res := QueryDoctorByID(existingID)
 	if PRINTRES {
 		str, err := utils.IndentedJson(res, utils.INDENT_SPACE)
@@ -193,13 +198,13 @@ func TestQueryDoctorByID(t *testing.T) {
 func TestIsValidDoctor(t *testing.T) {
 	doctor := asset.Doctor{
 		Person: asset.Person{
-			ID: "d1", Name: "Apple", Age: 24,
+			ID: "doct1", Name: "Apple", Age: 24,
 		},
 		Department: "Dep1",
 	}
 	notExistDoctor := asset.Doctor{
 		Person: asset.Person{
-			ID: "d1", Name: "Apple", Age: 24,
+			ID: "doct1", Name: "Apple", Age: 24,
 		},
 		Department: "Dep2",
 	}
@@ -208,7 +213,7 @@ func TestIsValidDoctor(t *testing.T) {
 	if PRINTRES {
 		str, err := utils.IndentedJson(res, utils.INDENT_SPACE)
 		assert.NoError(t, err, "")
-		log.Println(str)
+		log.Println(str, string(res.Payload))
 	}
 	trueJSON, _ := json.Marshal(struct {
 		Val bool `json:"val"`
@@ -235,9 +240,8 @@ func TestGetMedicalRecord(t *testing.T) {
 		assert.NoError(t, err, "")
 		log.Println(str)
 	}
-	assert.EqualValues(t, 500, resErr.Status, "Error message should appear on 0 params")
-	assert.Contains(t, resErr.Message, "Support a pid(string) for this call",
-		"Following message should be displayed")
+	assert.NotEqualValues(t, "null", string(resErr.Payload),
+		"Payload is 'null'")
 	res := GetRecord(patientID)
 	if PRINTRES {
 		str, err := utils.IndentedJson(res, utils.INDENT_SPACE)
@@ -247,7 +251,7 @@ func TestGetMedicalRecord(t *testing.T) {
 	var rec []asset.Record
 	err := json.Unmarshal(res.Payload, &rec)
 	assert.NoError(t, err, "Error is not nil! Error is ", err)
-	assert.Len(t, rec, 1, "There should be 1 record, found ", len(rec))
+	assert.Len(t, rec, 3, "There should be 3 records, found ", len(rec))
 }
 
 func TestPatientInfoSet(t *testing.T) {
@@ -260,4 +264,13 @@ func TestPatientInfoSet(t *testing.T) {
 	err := json.Unmarshal(res.Payload, &pInfo)
 	assert.NoError(t, err, "Nothing wrong happens to unmarshalling")
 	assert.False(t, pInfo.IsMarried, "This has successfully changed")
+}
+
+func TestGetAllPatients(t *testing.T) {
+	var p []asset.OutPatient
+	stub.MockInit(test_UUID, nil)
+	res := GetAllPatients()
+	err := json.Unmarshal(res.Payload, &p)
+	assert.NoError(t, err, "Nothing wrong happens to unmarshalling")
+	assert.Len(t, p, 2, "There are 2 persons overall")
 }
