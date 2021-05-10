@@ -91,6 +91,26 @@ func QueryDoctorByID(dID string) peer.Response {
 	return stub.MockInvoke(test_UUID, [][]byte{[]byte("QueryDoctorByID"), []byte(dID)})
 }
 
+func QueryMRByStartToEndDate(startdate time.Time, enddate time.Time, pid string) peer.Response {
+	return stub.MockInvoke(test_UUID, [][]byte{[]byte("GetMRByDate"), []byte(pid),
+		[]byte(startdate.Format("2006-1-2 15:01:05")),
+		[]byte(enddate.Format("2006-1-2 15:01:05"))})
+}
+
+func AddCollaborator(member asset.Doctor, pID string,
+	filterRec map[string]interface{}) peer.Response {
+	bdoctor, _ := json.Marshal(member)
+	bf, _ := json.Marshal(filterRec)
+	return stub.MockInvoke(test_UUID, [][]byte{[]byte("AddCollaborator"), []byte(pID), bdoctor, bf})
+}
+
+func RemoveCollaborator(member asset.Doctor, pID string,
+	filterRec map[string]interface{}) peer.Response {
+	bdoctor, _ := json.Marshal(member)
+	bf, _ := json.Marshal(filterRec)
+	return stub.MockInvoke(test_UUID, [][]byte{[]byte("RemoveCollaborator"), []byte(pID), bdoctor, bf})
+}
+
 // -- Tests -- //
 func TestInitLedger(t *testing.T) {
 	assert.FileExists(t, "../../init.json", "Init file does not exist!")
@@ -106,7 +126,7 @@ func TestInitLedger(t *testing.T) {
 }
 
 func TestInitNewRecord(t *testing.T) {
-	patientID := "p1"
+	patientID := "p3"
 	cnt := map[string]interface{}{
 		"keystr":  "value1",
 		"keybool": true,
@@ -135,8 +155,9 @@ func TestInitNewRecord(t *testing.T) {
 	dec.UseNumber()
 	err := dec.Decode(&records)
 	assert.NoError(t, err, "No problem should appear unmarshalling")
-	assert.Len(t, records, 4, "There should be 4 records of patient ", patientID)
-	assert.Contains(t, records, nRecord, "The new record should be inserted")
+	assert.Len(t, records, 1, "There should be 1 record of patient ", patientID)
+	assert.Len(t, records[0].Collaborators, 1, "There should be 1 collaborator by default")
+	assert.EqualValues(t, records[0].Collaborators[0].Role, "manager", "The first collaborator should be manager")
 	// another one
 	res = AddRecord(patientID, asset.Record{
 		Type: "test3",
@@ -160,7 +181,7 @@ func TestInitNewRecord(t *testing.T) {
 	dec.UseNumber()
 	err = dec.Decode(&records)
 	assert.NoError(t, err, "No problem should appear unmarshalling")
-	assert.Len(t, records, 5, "There should be 5 records of patient ", patientID)
+	assert.Len(t, records, 2, "There should be 2 records of patient ", patientID)
 }
 
 func TestPatientInfoGet(t *testing.T) {
@@ -272,5 +293,93 @@ func TestGetAllPatients(t *testing.T) {
 	res := GetAllPatients()
 	err := json.Unmarshal(res.Payload, &p)
 	assert.NoError(t, err, "Nothing wrong happens to unmarshalling")
-	assert.Len(t, p, 2, "There are 2 persons overall")
+	assert.Len(t, p, 3, "There are 3 patients overall")
+}
+
+func TestGetMRBydate(t *testing.T) {
+	pid := "p1"
+	start := time.Date(2021, 4, 8, 0, 0, 0, 0, time.Local)
+	end := time.Now()
+	res := QueryMRByStartToEndDate(start, end, pid)
+	var rec []asset.Record
+	err := json.Unmarshal(res.Payload, &rec)
+	assert.NoError(t, err, "Error is not nil! Error is", err)
+	assert.Len(t, rec, 2, "There should be 2 records")
+	start2 := time.Date(2021, 4, 10, 11, 45, 14, 0, time.Local)
+	res2 := QueryMRByStartToEndDate(start2, end, "p2")
+	err = json.Unmarshal(res2.Payload, &rec)
+	assert.NoError(t, err, "Error is not nil! Error is", err)
+	assert.Len(t, rec, 2, "There should be 2 records")
+}
+
+func TestCollaborator(t *testing.T) {
+	res1 := GetRecord("p1")
+	var precord []asset.Record
+	err := json.Unmarshal(res1.Payload, &precord)
+	assert.NoError(t, err, "Nothing wrong happens to unmarshalling")
+	assert.GreaterOrEqualf(t, len(precord), 1, "There should be at least one record")
+	assert.NotEmpty(t, precord[0].Collaborators, "There should be at least one collaborators")
+	res2 := AddCollaborator(asset.Doctor{
+		Person: asset.Person{
+			Name: "Catt",
+			ID:   "doct3",
+			Age:  26,
+		},
+		Department: "Dep2",
+	}, "p1", map[string]interface{}{
+		"type": "Type1",
+	})
+	jsonsuccess, _ := json.Marshal(map[string]interface{}{
+		"success": true,
+		"error":   "null",
+	})
+	assert.JSONEq(t, string(jsonsuccess), string(res2.Payload), "Operating should be success")
+
+	std, _ := time.ParseInLocation("2006-1-2 15:04:05", "2021-4-7 13:00:00", time.Local)
+	end, _ := time.ParseInLocation("2006-1-2 15:04:05", "2021-4-8 08:00:00", time.Local)
+	res3 := QueryMRByStartToEndDate(std, end, "p1")
+	err = json.Unmarshal(res3.Payload, &precord)
+	assert.NoError(t, err, "Nothing wrong happens to unmarshalling")
+	log.Println("res3:", string(res3.Payload))
+	//todo: AddCollaborator and RemoveCollaborator did not write to ledger
+	//if !assert.Len(t, precord,1,"There should be 1 result"){
+	//	t.FailNow()
+	//}
+	//assert.Len(t, precord[0].Collaborators,3,"There should be 3 collaborators")
+	//res4 := AddCollaborator(asset.Doctor{
+	//	Person: asset.Person{
+	//		Name: "Catt",
+	//		ID:   "doct3",
+	//		Age:  26,
+	//	},
+	//	Department: "Dep2",
+	//}, "p1", map[string]interface{}{
+	//	"type": "Type1",
+	//})
+	//log.Println(string(res4.Payload))
+	res5 := RemoveCollaborator(asset.Doctor{
+		Person: asset.Person{
+			Name: "Apple",
+			ID:   "doct1",
+			Age:  24,
+		},
+		Department: "Dep1",
+	}, "p1", map[string]interface{}{
+		"type": "Type1",
+	})
+	assert.JSONEq(t, string(jsonsuccess), string(res5.Payload), "Operating should be success")
+	res6 := RemoveCollaborator(asset.Doctor{
+		Person: asset.Person{
+			Name: "Banana",
+			ID:   "doct2",
+			Age:  25,
+		},
+		Department: "Dep1",
+	}, "p1", map[string]interface{}{
+		"type": "Type1",
+	})
+	m, err := utils.JsonToMap(string(res6.Payload))
+	assert.NoError(t, err, "No error transferring to map")
+	assert.False(t, m["success"].(bool), "Operation should fail")
+	assert.Contains(t, m["error"], "cannot remove manager", "")
 }

@@ -14,7 +14,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"reflect"
 	"strings"
+	"time"
 )
 
 var Name = "smartMedicineSystem"
@@ -177,7 +179,7 @@ func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 		if len(params) == 0 {
 			return shim.Error("Support a pid(string) for this call!")
 		}
-		log.Println("Get patient info by pid called", "( pid =", params[0], ")")
+		log.Println("Get patient info by pid called", "(pid =", params[0], ")")
 		pInfo, err := s.GetPatientInfoByPID(stub, params[0])
 		if err != nil {
 			return shim.Error(err.Error())
@@ -189,6 +191,54 @@ func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 			return shim.Error(err.Error())
 		}
 		payload, _ = json.Marshal(r)
+	case "GetMRByDate":
+		if len(params) < 3 {
+			return shim.Error("Not enough params to get mr by date")
+		}
+		pID := params[0]
+		st := params[1]
+		ed := params[2]
+		r, err := s.GetMRByDate(stub, pID, st, ed)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		payload, _ = json.Marshal(r)
+	case "AddCollaborator":
+		if len(params) < 3 {
+			return shim.Error("Not enough params")
+		}
+		pID := params[0]
+		doc := params[1]
+		var d asset.Doctor
+		_ = json.Unmarshal([]byte(doc), &d)
+		m, _ := utils.JsonToMap(params[2])
+		err := s.AddCollaborator(stub, d, pID, m)
+		var errstring string = "null"
+		if err != nil {
+			errstring = err.Error()
+		}
+		payload, _ = json.Marshal(map[string]interface{}{
+			"success": err == nil,
+			"error":   errstring,
+		})
+	case "RemoveCollaborator":
+		if len(params) < 3 {
+			return shim.Error("Not enough params")
+		}
+		pID := params[0]
+		doc := params[1]
+		var d asset.Doctor
+		_ = json.Unmarshal([]byte(doc), &d)
+		m, _ := utils.JsonToMap(params[2])
+		err := s.RemoveCollaborator(stub, d, pID, m)
+		var errstring string = "null"
+		if err != nil {
+			errstring = err.Error()
+		}
+		payload, _ = json.Marshal(map[string]interface{}{
+			"success": err == nil,
+			"error":   errstring,
+		})
 	default:
 		log.Println("Unknown function ", fun, "called")
 		return shim.Error("Nothing has called")
@@ -246,10 +296,101 @@ func (s *MedicalSystem) InitNewRecord(stub shim.ChaincodeStubInterface, patientI
 	if len(newRec.ID) == 0 {
 		newRec.ID = patientID
 	}
+	// the first doctor with one patient defaults to manager role
+	newRec.Collaborators = append(newRec.Collaborators, asset.Collaborator{
+		Doc:  signature,
+		Role: "manager",
+	})
 	records = append(records, newRec)
 	rec, _ := json.Marshal(records)
-	dkey, _ := stub.CreateCompositeKey(utils.PATIENT_RECORD_STATE_KEY_PREFIX, []string{patientID})
+	dkey, _ := stub.CreateCompositeKey(utils.PATIENT_RECORD_STATE_KEY_PREFIX, []string{patientID, time})
 	return stub.PutState(dkey, rec)
+}
+
+// RemoveCollaborator /* remove a doctor from patient's record's collaborator list */
+func (s *MedicalSystem) RemoveCollaborator(stub shim.ChaincodeStubInterface, member asset.Doctor, pID string,
+	filterRec map[string]interface{}) error {
+	log.Println("Removing", member, "out of", pID, "'s record's collaborator list")
+	res := s.IsValidDoctor(stub, member)
+	if !res {
+		return errors.New("not a valid doctor")
+	}
+	mrs, err := s.GetMedicalRecord(stub, pID)
+	if err != nil {
+		return err
+	}
+	var restoreTime string
+Loop:
+	for indexOuter, value := range mrs {
+		for _, v := range filterRec {
+			valof := reflect.ValueOf(value)
+			for i := 0; i < valof.NumField(); i++ {
+				if valof.Field(i).Interface() == v {
+					cols := value.Collaborators
+					for index, doc := range cols {
+						if doc.Role == "manager" {
+							return errors.New("cannot remove manager")
+						}
+						if member == doc.Doc {
+							mrs[indexOuter].Collaborators = append(cols[:index], cols[index+1:]...)
+							restoreTime = value.Time
+							break Loop
+						}
+					}
+				}
+			}
+		}
+	}
+	if len(restoreTime) == 0 {
+		return errors.New("no valid record found")
+	}
+	dkey, _ := stub.CreateCompositeKey(utils.PATIENT_RECORD_STATE_KEY_PREFIX,
+		[]string{pID, restoreTime})
+	log.Println("after delete:", mrs)
+	mrbytes, _ := json.Marshal(mrs)
+	return stub.PutState(dkey, mrbytes)
+}
+
+// AddCollaborator /* add a new doctor to patient's record's collaborator list */
+func (s *MedicalSystem) AddCollaborator(stub shim.ChaincodeStubInterface, member asset.Doctor, pID string,
+	filterRec map[string]interface{}) error {
+	log.Println("Adding", member, "to", pID, "'s record's collaborator list")
+	res := s.IsValidDoctor(stub, member)
+	if !res {
+		return errors.New("not a valid doctor")
+	}
+	mrs, err := s.GetMedicalRecord(stub, pID)
+	if err != nil {
+		return err
+	}
+	var restoreTime string
+Loop:
+	for index, value := range mrs {
+		for _, v := range filterRec {
+			valof := reflect.ValueOf(value)
+			for i := 0; i < valof.NumField(); i++ {
+				if valof.Field(i).Interface() == v {
+					for _, doc := range value.Collaborators {
+						if member == doc.Doc {
+							return errors.New("the doctor is already in this list")
+						}
+						mrs[index].Collaborators = append(value.Collaborators,
+							asset.Collaborator{Doc: member, Role: "member"})
+						restoreTime = value.Time
+						break Loop
+					}
+				}
+			}
+		}
+	}
+	if len(restoreTime) == 0 {
+		return errors.New("no valid record found")
+	}
+	dkey, _ := stub.CreateCompositeKey(utils.PATIENT_RECORD_STATE_KEY_PREFIX,
+		[]string{pID, restoreTime})
+	mrbytes, _ := json.Marshal(mrs)
+	log.Println("after add:", string(mrbytes))
+	return stub.PutState(dkey, mrbytes)
 }
 
 // SetPatientInfo /* Set the patient's info using key and values */
@@ -360,6 +501,29 @@ func (s *MedicalSystem) GetMedicalRecord(stub shim.ChaincodeStubInterface,
 	dec := json.NewDecoder(bytes.NewBuffer(mr))
 	dec.UseNumber()
 	_ = dec.Decode(&record)
+	return record, nil
+}
+
+// GetMRByDate /* Get the patient's record(s) by patient's ID and date */
+func (s *MedicalSystem) GetMRByDate(stub shim.ChaincodeStubInterface, patientID string,
+	startDate string, endDate string) ([]asset.Record, error) {
+	log.Println("Find records of", patientID, "that is from", startDate, "to", endDate)
+	all, err := s.GetMedicalRecord(stub, patientID)
+	//log.Println(all)
+	var record []asset.Record
+	if err != nil {
+		return record, err
+	}
+	startTime, _ := time.ParseInLocation("2006-1-2 15:04:05", startDate, time.Local)
+	endTime, _ := time.ParseInLocation("2006-1-2 15:04:05", endDate, time.Local)
+	for _, v := range all {
+		thisTime, _ := time.ParseInLocation("2006-1-2 15:04:05", v.Time, time.Local)
+		//log.Println("v.Time=",v.Time)
+		//log.Println("startTime=",startTime,"thisTime=",thisTime,"endTime=",endTime)
+		if thisTime.After(startTime) && thisTime.Before(endTime) {
+			record = append(record, v)
+		}
+	}
 	return record, nil
 }
 

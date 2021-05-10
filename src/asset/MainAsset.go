@@ -13,12 +13,18 @@ type MedicalRecord struct {
 	PatientRecord []Record   `json:"patient_records"`
 }
 
+type Collaborator struct {
+	Doc  Doctor `json:"doctor"`
+	Role string `json:"role" validate:"required,oneof=manager member"`
+}
+
 type Record struct {
-	ID        string      `json:"id" validate:"required"`
-	Type      string      `json:"type"`
-	Time      string      `json:"time" validate:"required,datetime=2006-01-02 15:04:05"`
-	Content   interface{} `json:"content"`
-	Signature Doctor      `json:"signed_by"`
+	Collaborators []Collaborator `json:"collaborators"`
+	ID            string         `json:"id" validate:"required"`
+	Type          string         `json:"type"`
+	Time          string         `json:"time" validate:"required,datetime=2006-1-2 15:04:05"`
+	Content       interface{}    `json:"content"`
+	Signature     Doctor         `json:"signed_by"`
 }
 
 func (m MedicalRecord) SetPInfo(patient OutPatient) {

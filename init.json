@@ -44,7 +44,7 @@
 				{
 					"id": "p1",
 					"type": "Type1",
-					"time": "2021-4-7 13:00:45",
+					"time": "2021-4-7 13:05:25",
 					"content": {},
 					"signed_by": {
 						"person": {
@@ -53,7 +53,31 @@
 							"age": 24
 						},
 						"department": "Dep1"
-					}
+					},
+					"collaborators": [
+						{
+							"doctor": {
+								"person": {
+									"id": "doct1",
+									"name": "Apple",
+									"age": 24
+								},
+								"department": "Dep1"
+							},
+							"role": "member"
+						},
+						{
+							"doctor": {
+								"person": {
+									"id": "doct2",
+									"name": "Banana",
+									"age": 25
+								},
+								"department": "Dep1"
+							},
+							"role": "manager"
+						}
+					]
 				},
 				{
 					"id": "p1",
@@ -70,7 +94,20 @@
 							"age": 25
 						},
 						"department": "Dep1"
-					}
+					},
+					"collaborators": [
+						{
+							"role": "manager",
+							"doctor": {
+								"person": {
+									"id": "doct2",
+									"name": "Banana",
+									"age": 25
+								},
+								"department": "Dep1"
+							}
+						}
+					]
 				},
 				{
 					"id": "p1",
@@ -84,7 +121,20 @@
 							"age": 24
 						},
 						"department": "Dep1"
-					}
+					},
+					"collaborators": [
+						{
+							"doctor": {
+								"person": {
+									"id": "doct1",
+									"name": "Apple",
+									"age": 24
+								},
+								"department": "Dep1"
+							},
+							"role": "manager"
+						}
+					]
 				}
 			]
 		},
@@ -115,12 +165,25 @@
 							"age": 25
 						},
 						"department": "Dep1"
-					}
+					},
+					"collaborators": [
+						{
+							"doctor": {
+								"person": {
+									"id": "doct1",
+									"name": "Banana",
+									"age": 25
+								},
+								"department": "Dep1"
+							},
+							"role": "manager"
+						}
+					]
 				},
 				{
 					"id": "p2",
 					"type": "Type3",
-					"time": "2021-5-12 11:45:14",
+					"time": "2021-5-10 11:45:14",
 					"content": {},
 					"signed_by": {
 						"person": {
@@ -129,9 +192,37 @@
 							"age": 24
 						},
 						"department": "Dep1"
-					}
+					},
+					"collaborators": [
+						{
+							"doctor": {
+								"person": {
+									"id": "doct2",
+									"name": "Apple",
+									"age": 24
+								},
+								"department": "Dep1"
+							},
+							"role": "manager"
+						}
+					]
 				}
 			]
+		},
+		{
+			"patient_info": {
+				"person": {
+					"id": "p3",
+					"isMarried": false,
+					"name": "Guy"
+				},
+				"birthday": "1975-4-20",
+				"career": "career3",
+				"address": "addr3",
+				"country": "China",
+				"region": "Beijing"
+			},
+			"patient_records": []
 		}
 	]
 }
