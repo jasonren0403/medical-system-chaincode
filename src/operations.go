@@ -191,6 +191,12 @@ func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 			return shim.Error(err.Error())
 		}
 		payload, _ = json.Marshal(r)
+	case "GetAllDoctors":
+		r, err := s.GetAllDoctors(stub)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		payload, _ = json.Marshal(r)
 	case "GetMRByDate":
 		if len(params) < 3 {
 			return shim.Error("Not enough params to get mr by date")
@@ -258,6 +264,22 @@ func (s *MedicalSystem) IsValidDoctor(stub shim.ChaincodeStubInterface, doctor a
 	var _doctor asset.Doctor
 	_ = json.Unmarshal(dbyte, &_doctor)
 	return dbyte != nil && doctor == _doctor
+}
+
+// GetAllDoctors /* Return all the doctors in this system */
+func (s *MedicalSystem) GetAllDoctors(stub shim.ChaincodeStubInterface) ([]asset.Doctor, error) {
+	query, _ := stub.GetStateByPartialCompositeKey(utils.DOCTOR_STATE_KEY_PREFIX, []string{})
+	var ps []asset.Doctor
+	for query.HasNext() {
+		t, _ := query.Next()
+		var r1 asset.Doctor
+		dec := json.NewDecoder(bytes.NewBuffer(t.GetValue()))
+		dec.UseNumber()
+		_ = dec.Decode(&r1)
+		ps = append(ps, r1)
+	}
+	_ = query.Close()
+	return ps, nil
 }
 
 // QueryDoctorByID /* find doctor info by doctor ID */

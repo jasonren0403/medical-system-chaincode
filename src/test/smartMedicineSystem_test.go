@@ -97,6 +97,10 @@ func QueryMRByStartToEndDate(startdate time.Time, enddate time.Time, pid string)
 		[]byte(enddate.Format("2006-1-2 15:01:05"))})
 }
 
+func GetAllDoctors() peer.Response {
+	return stub.MockInvoke(test_UUID, [][]byte{[]byte("GetAllDoctors")})
+}
+
 func AddCollaborator(member asset.Doctor, pID string,
 	filterRec map[string]interface{}) peer.Response {
 	bdoctor, _ := json.Marshal(member)
@@ -113,7 +117,9 @@ func RemoveCollaborator(member asset.Doctor, pID string,
 
 // -- Tests -- //
 func TestInitLedger(t *testing.T) {
-	assert.FileExists(t, "../../init.json", "Init file does not exist!")
+	if !assert.FileExists(t, "../../init.json", "Init file does not exist!") {
+		t.FailNow()
+	}
 	result := stub.MockInit(test_UUID, nil)
 	if PRINTRES {
 		str, err := utils.IndentedJson(result, utils.INDENT_SPACE)
@@ -154,10 +160,11 @@ func TestInitNewRecord(t *testing.T) {
 	dec := json.NewDecoder(bytes.NewBuffer(res.Payload))
 	dec.UseNumber()
 	err := dec.Decode(&records)
-	assert.NoError(t, err, "No problem should appear unmarshalling")
-	assert.Len(t, records, 1, "There should be 1 record of patient ", patientID)
-	assert.Len(t, records[0].Collaborators, 1, "There should be 1 collaborator by default")
-	assert.EqualValues(t, records[0].Collaborators[0].Role, "manager", "The first collaborator should be manager")
+	if assert.NoError(t, err, "No problem should appear unmarshalling") {
+		assert.Len(t, records, 1, "There should be 1 record of patient ", patientID)
+		assert.Len(t, records[0].Collaborators, 1, "There should be 1 collaborator by default")
+		assert.EqualValues(t, records[0].Collaborators[0].Role, "manager", "The first collaborator should be manager")
+	}
 	// another one
 	res = AddRecord(patientID, asset.Record{
 		Type: "test3",
@@ -180,8 +187,9 @@ func TestInitNewRecord(t *testing.T) {
 	dec = json.NewDecoder(bytes.NewBuffer(res.Payload))
 	dec.UseNumber()
 	err = dec.Decode(&records)
-	assert.NoError(t, err, "No problem should appear unmarshalling")
-	assert.Len(t, records, 2, "There should be 2 records of patient ", patientID)
+	if assert.NoError(t, err, "No problem should appear unmarshalling") {
+		assert.Len(t, records, 2, "There should be 2 records of patient ", patientID)
+	}
 }
 
 func TestPatientInfoGet(t *testing.T) {
@@ -271,8 +279,9 @@ func TestGetMedicalRecord(t *testing.T) {
 	}
 	var rec []asset.Record
 	err := json.Unmarshal(res.Payload, &rec)
-	assert.NoError(t, err, "Error is not nil! Error is ", err)
-	assert.Len(t, rec, 3, "There should be 3 records, found ", len(rec))
+	if assert.NoError(t, err, "Error is not nil! Error is ", err) {
+		assert.Len(t, rec, 3, "There should be 3 records, found ", len(rec))
+	}
 }
 
 func TestPatientInfoSet(t *testing.T) {
@@ -283,8 +292,9 @@ func TestPatientInfoSet(t *testing.T) {
 		"isMarried": false,
 	})
 	err := json.Unmarshal(res.Payload, &pInfo)
-	assert.NoError(t, err, "Nothing wrong happens to unmarshalling")
-	assert.False(t, pInfo.IsMarried, "This has successfully changed")
+	if assert.NoError(t, err, "Nothing wrong happens to unmarshalling") {
+		assert.False(t, pInfo.IsMarried, "This has successfully changed")
+	}
 }
 
 func TestGetAllPatients(t *testing.T) {
@@ -292,8 +302,9 @@ func TestGetAllPatients(t *testing.T) {
 	stub.MockInit(test_UUID, nil)
 	res := GetAllPatients()
 	err := json.Unmarshal(res.Payload, &p)
-	assert.NoError(t, err, "Nothing wrong happens to unmarshalling")
-	assert.Len(t, p, 3, "There are 3 patients overall")
+	if assert.NoError(t, err, "Nothing wrong happens to unmarshalling") {
+		assert.Len(t, p, 3, "There are 3 patients overall")
+	}
 }
 
 func TestGetMRBydate(t *testing.T) {
@@ -303,13 +314,15 @@ func TestGetMRBydate(t *testing.T) {
 	res := QueryMRByStartToEndDate(start, end, pid)
 	var rec []asset.Record
 	err := json.Unmarshal(res.Payload, &rec)
-	assert.NoError(t, err, "Error is not nil! Error is", err)
-	assert.Len(t, rec, 2, "There should be 2 records")
+	if assert.NoError(t, err, "Error is not nil! Error is", err) {
+		assert.Len(t, rec, 2, "There should be 2 records")
+	}
 	start2 := time.Date(2021, 4, 10, 11, 45, 14, 0, time.Local)
 	res2 := QueryMRByStartToEndDate(start2, end, "p2")
 	err = json.Unmarshal(res2.Payload, &rec)
-	assert.NoError(t, err, "Error is not nil! Error is", err)
-	assert.Len(t, rec, 2, "There should be 2 records")
+	if assert.NoError(t, err, "Error is not nil! Error is", err) {
+		assert.Len(t, rec, 2, "There should be 2 records")
+	}
 }
 
 func TestCollaborator(t *testing.T) {
@@ -382,4 +395,18 @@ func TestCollaborator(t *testing.T) {
 	assert.NoError(t, err, "No error transferring to map")
 	assert.False(t, m["success"].(bool), "Operation should fail")
 	assert.Contains(t, m["error"], "cannot remove manager", "")
+}
+
+func TestGetAllDoctors(t *testing.T) {
+	var doc []asset.Doctor
+	res := GetAllDoctors()
+	if PRINTRES {
+		str, err := utils.IndentedJson(res, utils.INDENT_SPACE)
+		assert.NoError(t, err, "")
+		log.Println(str)
+	}
+	err := json.Unmarshal(res.Payload, &doc)
+	if assert.NoError(t, err, "Error is not nil! Error is", err) {
+		assert.Len(t, doc, 3, "There should be 3 doctors overall")
+	}
 }
