@@ -19,11 +19,11 @@ func TestGroupSign(t *testing.T) {
 	member := priv.NewMember()
 	//generate  new  cert
 	cert := priv.Cert(member.u_)
-	fmt.Println(cert.A.String())
+	fmt.Println("cert.A=", cert.A.String())
 
 	member1 := priv.NewMember()
 	cert1 := priv.Cert(member1.u_)
-	fmt.Println(cert1.A.String())
+	fmt.Println("cert1.A=", cert1.A.String())
 
 	//verify  cert
 	member.VerifyCert(cert)
