@@ -44,7 +44,7 @@ peer lifecycle chaincode package ms.tar.gz --path ../chaincode/MedicalSystem --l
 ```
 
 2. 安装：
-  1. 节点1名义
+    1. 节点1名义
     ```shell
     export CORE_PEER_TLS_ENABLED=true
     export CORE_PEER_LOCALMSPID="Org1MSP"
@@ -54,7 +54,7 @@ peer lifecycle chaincode package ms.tar.gz --path ../chaincode/MedicalSystem --l
     
     peer lifecycle chaincode install ms.tar.gz
     ```
-  2. 节点2名义
+    2. 节点2名义
     ```shell
     export CORE_PEER_LOCALMSPID="Org2MSP"
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
