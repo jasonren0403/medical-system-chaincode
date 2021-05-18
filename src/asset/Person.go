@@ -20,7 +20,7 @@ type OutPatient struct {
 	Person    `json:"person"`
 	Country   string `json:"country"`
 	Region    string `json:"region"`
-	Birthday  string `json:"birthday" validate:"required,datetime=2006-01-02"`
+	Birthday  string `json:"birthday" validate:"required,datetime=2006-1-2"`
 	IsMarried bool   `json:"isMarried"`
 	Career    string `json:"career"`
 	Address   string `json:"address"`

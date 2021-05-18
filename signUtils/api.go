@@ -191,3 +191,7 @@ func (priv *PrivateKey) Open(sig *Sig) *pbc.Element {
 	return temp3
 }
 
+func UpdateParams() bool {
+	return false
+}
+

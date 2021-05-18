@@ -8,8 +8,9 @@ import (
 // bbs04
 
 type Group struct {
-	g1, h, u, v, g2, w, ehw, ehg2, minusEg1g2 *pbc.Element
-	pairing                                   *pbc.Pairing
+	g1, g2, h, u, v, w, // group public key
+	ehw, ehg2, minusEg1g2 *pbc.Element
+	pairing *pbc.Pairing
 }
 
 type PrivateKey struct {
@@ -32,7 +33,7 @@ type GroupInfo struct {
 	// Gpk public key of the group
 	Gpk ed25519.PublicKey `json:"pk_group"`
 	// gamma private key of the group
-	gamma ed25519.PrivateKey
+	gamma PrivateKey
 	// gmsk "private" keys of the group manager (cert -> member's public key)
 	gmsk map[string]ed25519.PublicKey
 	// Members members of the group
@@ -60,7 +61,7 @@ type IGroupSign interface {
 	// Verify uses the *group*'s public key to verify the validity of the given message
 	Verify(g GroupInfo, sig string, message string) bool
 	// Open tracks the user certificate from the message with manage key
-	Open(g GroupInfo, manageKey ed25519.PrivateKey, message string) string
+	Open(g GroupInfo, manageKey PrivateKey, message string) string
 	// Revoke updates gpk when group member revoked, changes the gpk as result
 	Revoke(gm GroupMember) string
 	// UpdateParams updates the group params after a member is revoked

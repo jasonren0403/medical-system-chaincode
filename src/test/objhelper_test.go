@@ -1,7 +1,9 @@
 package smartMedicineSystem
 
 import (
+	"ccode/src/asset"
 	"ccode/src/utils"
+	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"log"
 	"testing"
@@ -98,4 +100,19 @@ func TestMapToJson(t *testing.T) {
 	assert.Contains(t, string(bmaps), "key4", "key4 should be merged")
 	assert.Contains(t, string(bmaps), "key5", "key5 should be merged")
 	assert.Contains(t, string(bmaps), "key6", "key6 should be merged")
+}
+
+func TestA(t *testing.T) {
+	var collaboratorsStr = "[{\"doctor\":{\"person\":{\"id\":\"doct1\",\"name\":\"Apple\",\"age\":24},\"department\":\"Dep1\"},\"role\":\"member\"},{\"doctor\":{\"person\":{\"id\":\"doct2\",\"name\":\"Banana\",\"age\":25},\"department\":\"Dep1\"},\"role\":\"manager\"},{\"doctor\":{\"person\":{\"id\":\"doct3\",\"name\":\"Catt\",\"age\":26},\"department\":\"Dep2\"},\"role\":\"member\"}]"
+	var needleStr = "{\"doctor\":{\"person\":{\"id\":\"doct2\",\"name\":\"Banana\",\"age\":25},\"department\":\"Dep1\"},\"role\":\"manager\"}"
+	var nonNeedle = "{\"doctor\":{\"person\":{\"id\":\"doct1\",\"name\":\"Apple\",\"age\":27},\"department\":\"Dep1\"},\"role\":\"member\"}"
+	var cols []asset.Collaborator
+	var needle asset.Collaborator
+	err := json.Unmarshal(utils.Str2bytes(collaboratorsStr), &cols)
+	assert.NoError(t, err, "")
+	err = json.Unmarshal(utils.Str2bytes(needleStr), &needle)
+	assert.NoError(t, err, "")
+	assert.True(t, asset.InCollaboratorList(cols, needle), "")
+	err = json.Unmarshal(utils.Str2bytes(nonNeedle), &needle)
+	assert.False(t, asset.InCollaboratorList(cols, needle), "")
 }

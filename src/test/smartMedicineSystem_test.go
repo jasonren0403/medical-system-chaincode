@@ -50,6 +50,12 @@ func tearDown() {
 }
 
 // -- Helpers -- //
+
+func NewPatient(pat asset.OutPatient) peer.Response {
+	bin, _ := json.Marshal(pat)
+	return stub.MockInvoke(test_UUID, [][]byte{[]byte("NewPatient"), bin})
+}
+
 func AddRecord(pid string, rec asset.Record, rContent map[string]interface{}) peer.Response {
 	var brContent []byte
 	if rContent == nil {
@@ -149,7 +155,6 @@ func TestInitNewRecord(t *testing.T) {
 			Department: "Dep1",
 		},
 	}
-	stub.MockInit(test_UUID, nil)
 	res := AddRecord(patientID, nRecord, nil)
 	if PRINTRES {
 		str, err := utils.IndentedJson(res, utils.INDENT_SPACE)
@@ -161,9 +166,11 @@ func TestInitNewRecord(t *testing.T) {
 	dec.UseNumber()
 	err := dec.Decode(&records)
 	if assert.NoError(t, err, "No problem should appear unmarshalling") {
-		assert.Len(t, records, 1, "There should be 1 record of patient ", patientID)
-		assert.Len(t, records[0].Collaborators, 1, "There should be 1 collaborator by default")
-		assert.EqualValues(t, records[0].Collaborators[0].Role, "manager", "The first collaborator should be manager")
+		if assert.Len(t, records, 1, "There should be 1 record of patient ", patientID) {
+			if assert.Len(t, records[0].Collaborators, 1, "There should be 1 collaborator by default") {
+				assert.EqualValues(t, records[0].Collaborators[0].Role, "manager", "The first collaborator should be manager")
+			}
+		}
 	}
 	// another one
 	res = AddRecord(patientID, asset.Record{
@@ -188,7 +195,7 @@ func TestInitNewRecord(t *testing.T) {
 	dec.UseNumber()
 	err = dec.Decode(&records)
 	if assert.NoError(t, err, "No problem should appear unmarshalling") {
-		assert.Len(t, records, 2, "There should be 2 records of patient ", patientID)
+		assert.Lenf(t, records, 2, "There should be 2 records of patient %s", patientID)
 	}
 }
 
@@ -262,7 +269,6 @@ func TestIsValidDoctor(t *testing.T) {
 
 func TestGetMedicalRecord(t *testing.T) {
 	patientID := "p1"
-	stub.MockInit(test_UUID, nil)
 	resErr := GetRecord("")
 	if PRINTRES {
 		str, err := utils.IndentedJson(resErr, utils.INDENT_SPACE)
@@ -280,14 +286,13 @@ func TestGetMedicalRecord(t *testing.T) {
 	var rec []asset.Record
 	err := json.Unmarshal(res.Payload, &rec)
 	if assert.NoError(t, err, "Error is not nil! Error is ", err) {
-		assert.Len(t, rec, 3, "There should be 3 records, found ", len(rec))
+		assert.Lenf(t, rec, 3, "There should be 3 records, found %d", len(rec))
 	}
 }
 
 func TestPatientInfoSet(t *testing.T) {
 	var pInfo asset.OutPatient
 	patientID := "p1"
-	stub.MockInit(test_UUID, nil)
 	res := SetPatientInfo(patientID, map[string]interface{}{
 		"isMarried": false,
 	})
@@ -299,11 +304,28 @@ func TestPatientInfoSet(t *testing.T) {
 
 func TestGetAllPatients(t *testing.T) {
 	var p []asset.OutPatient
-	stub.MockInit(test_UUID, nil)
 	res := GetAllPatients()
 	err := json.Unmarshal(res.Payload, &p)
 	if assert.NoError(t, err, "Nothing wrong happens to unmarshalling") {
 		assert.Len(t, p, 3, "There are 3 patients overall")
+	}
+	np := asset.OutPatient{
+		Person: asset.Person{
+			ID:   "p23512345",
+			Name: "testtest",
+			Age:  75,
+		},
+		Birthday: time.Now().Format("2006-1-2"),
+	}
+	res = NewPatient(np)
+	if PRINTRES {
+		str, err := utils.IndentedJson(res, utils.INDENT_SPACE)
+		assert.NoError(t, err, "")
+		log.Println(str)
+	}
+	err = json.Unmarshal(res.Payload, &p)
+	if assert.NoError(t, err, "Nothing wrong happens to unmarshalling") {
+		assert.Len(t, p, 4, "There are 4 patients overall")
 	}
 }
 
@@ -325,13 +347,18 @@ func TestGetMRBydate(t *testing.T) {
 	}
 }
 
+// fixme: failed test
 func TestCollaborator(t *testing.T) {
 	res1 := GetRecord("p1")
 	var precord []asset.Record
 	err := json.Unmarshal(res1.Payload, &precord)
-	assert.NoError(t, err, "Nothing wrong happens to unmarshalling")
-	assert.GreaterOrEqualf(t, len(precord), 1, "There should be at least one record")
-	assert.NotEmpty(t, precord[0].Collaborators, "There should be at least one collaborators")
+	if assert.NoError(t, err, "Nothing wrong happens to unmarshalling") {
+		if assert.GreaterOrEqualf(t, len(precord), 1, "There should be at least one record") {
+			assert.NotEmpty(t, precord[0].Collaborators, "There should be at least one collaborators")
+		} else {
+			t.FailNow()
+		}
+	}
 	res2 := AddCollaborator(asset.Doctor{
 		Person: asset.Person{
 			Name: "Catt",
@@ -346,30 +373,20 @@ func TestCollaborator(t *testing.T) {
 		"success": true,
 		"error":   "null",
 	})
-	assert.JSONEq(t, string(jsonsuccess), string(res2.Payload), "Operating should be success")
+	assert.JSONEq(t, string(jsonsuccess), string(res2.Payload), "Operation should be success")
 
 	std, _ := time.ParseInLocation("2006-1-2 15:04:05", "2021-4-7 13:00:00", time.Local)
 	end, _ := time.ParseInLocation("2006-1-2 15:04:05", "2021-4-8 08:00:00", time.Local)
 	res3 := QueryMRByStartToEndDate(std, end, "p1")
 	err = json.Unmarshal(res3.Payload, &precord)
-	assert.NoError(t, err, "Nothing wrong happens to unmarshalling")
-	log.Println("res3:", string(res3.Payload))
-	//todo: AddCollaborator and RemoveCollaborator did not write to ledger
-	//if !assert.Len(t, precord,1,"There should be 1 result"){
-	//	t.FailNow()
-	//}
-	//assert.Len(t, precord[0].Collaborators,3,"There should be 3 collaborators")
-	//res4 := AddCollaborator(asset.Doctor{
-	//	Person: asset.Person{
-	//		Name: "Catt",
-	//		ID:   "doct3",
-	//		Age:  26,
-	//	},
-	//	Department: "Dep2",
-	//}, "p1", map[string]interface{}{
-	//	"type": "Type1",
-	//})
-	//log.Println(string(res4.Payload))
+	if assert.NoError(t, err, "Nothing wrong happens to unmarshalling") {
+		log.Println("res3:", string(res3.Payload))
+		if !assert.Len(t, precord, 1, "There should be 1 result") {
+			t.FailNow()
+		} else {
+			assert.Len(t, precord[0].Collaborators, 3, "There should be 3 collaborators")
+		}
+	}
 	res5 := RemoveCollaborator(asset.Doctor{
 		Person: asset.Person{
 			Name: "Apple",
@@ -392,9 +409,10 @@ func TestCollaborator(t *testing.T) {
 		"type": "Type1",
 	})
 	m, err := utils.JsonToMap(string(res6.Payload))
-	assert.NoError(t, err, "No error transferring to map")
-	assert.False(t, m["success"].(bool), "Operation should fail")
-	assert.Contains(t, m["error"], "cannot remove manager", "")
+	if assert.NoError(t, err, "No error transferring to map") {
+		assert.False(t, m["success"].(bool), "Operation should fail")
+		assert.Contains(t, m["error"], "cannot remove manager", "")
+	}
 }
 
 func TestGetAllDoctors(t *testing.T) {

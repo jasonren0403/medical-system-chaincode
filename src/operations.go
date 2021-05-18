@@ -62,6 +62,7 @@ func (s *MedicalSystem) Init(stub shim.ChaincodeStubInterface) peer.Response {
 				return shim.Error(err.Error())
 			}
 			nkey, err := stub.CreateCompositeKey(utils.DOCTOR_STATE_KEY_PREFIX, []string{doctor.ID})
+			log.Println("[Init] put doctor info state key", nkey)
 			err = stub.PutState(nkey, dbyte)
 			if err != nil {
 				return shim.Error(err.Error())
@@ -86,9 +87,13 @@ func (s *MedicalSystem) Init(stub shim.ChaincodeStubInterface) peer.Response {
 				return shim.Error(err.Error())
 			}
 			nkey, err := stub.CreateCompositeKey(utils.PATIENT_INFO_STATE_KEY_PREFIX, []string{rec.PatientInfo.ID})
+			log.Printf("[Init] Put patient info state key %s\n", nkey)
 			err = stub.PutState(nkey, opbyte)
-			nkey, err = stub.CreateCompositeKey(utils.PATIENT_RECORD_STATE_KEY_PREFIX, []string{rec.PatientInfo.ID})
-			err = stub.PutState(nkey, prbyte)
+			for _, v := range rec.PatientRecord {
+				nkey, err = stub.CreateCompositeKey(utils.PATIENT_RECORD_STATE_KEY_PREFIX, []string{rec.PatientInfo.ID, v.Time})
+				log.Printf("[Init] Put record state key %s\n", nkey)
+				err = stub.PutState(nkey, prbyte)
+			}
 			if err != nil {
 				return shim.Error(err.Error())
 			}
@@ -103,6 +108,22 @@ func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 	log.Printf("Invoke() called >> \n\t%-10s%s\n\t%-10s%s", "Params:", params, "Function:", fun)
 	var payload []byte
 	switch fun {
+	case "NewPatient":
+		if len(params) < 1 {
+			return shim.Error("Not enough param for new patient info init!")
+		}
+		info := params[0]
+		var p asset.OutPatient
+		_ = json.Unmarshal([]byte(info), &p)
+		err := s.NewPatient(stub, p)
+		if err != nil {
+			return shim.Error("error creating new patient")
+		}
+		ps, err := s.GetAllPatients(stub)
+		if err != nil {
+			return shim.Error("error fetching all patient list")
+		}
+		payload, _ = json.Marshal(ps)
 	case "InitNewRecord":
 		if len(params) < 5 {
 			return shim.Error("Not enough param for new patient record init!")
@@ -252,6 +273,20 @@ func (s *MedicalSystem) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 	return shim.Success(payload)
 }
 
+// NewPatient /* put a new patient to the world state */
+func (s *MedicalSystem) NewPatient(stub shim.ChaincodeStubInterface, patient asset.OutPatient) error {
+	p2, err := s.GetPatientInfoByPID(stub, patient.ID)
+	if p2 != nil {
+		if err != nil {
+			return fmt.Errorf("patient already exists <origin error:%s>", err.Error())
+		}
+	}
+	p, _ := json.Marshal(patient)
+	dkey, _ := stub.CreateCompositeKey(utils.PATIENT_INFO_STATE_KEY_PREFIX, []string{patient.ID})
+	log.Println("new patient key:", dkey)
+	return stub.PutState(dkey, p)
+}
+
 // IsValidDoctor /* check if the doctor exists in the world state */
 func (s *MedicalSystem) IsValidDoctor(stub shim.ChaincodeStubInterface, doctor asset.Doctor) bool {
 	log.Println("checking if", doctor.ID, "is valid in world state")
@@ -326,6 +361,7 @@ func (s *MedicalSystem) InitNewRecord(stub shim.ChaincodeStubInterface, patientI
 	records = append(records, newRec)
 	rec, _ := json.Marshal(records)
 	dkey, _ := stub.CreateCompositeKey(utils.PATIENT_RECORD_STATE_KEY_PREFIX, []string{patientID, time})
+	log.Println("new record dkey=", dkey)
 	return stub.PutState(dkey, rec)
 }
 
@@ -452,6 +488,7 @@ func (s *MedicalSystem) SetPatientInfo(stub shim.ChaincodeStubInterface, ID stri
 
 	rec, _ := json.Marshal(pinfo)
 	dkey, _ := stub.CreateCompositeKey(utils.PATIENT_INFO_STATE_KEY_PREFIX, []string{ID})
+	log.Println("[SetPatientInfo]Composite key:", dkey)
 	return stub.PutState(dkey, rec)
 }
 
@@ -464,7 +501,7 @@ func (s *MedicalSystem) GetPatientInfoByPID(stub shim.ChaincodeStubInterface,
 		return nil, errors.New("Unable to interact with world state")
 	}
 	if existing == nil {
-		return nil, fmt.Errorf("Current patient <PID=%s> does not exist", patientID)
+		return nil, fmt.Errorf("current patient <PID=%s> does not exist", patientID)
 	}
 	var patient asset.OutPatient
 	err = json.Unmarshal(existing, &patient)
@@ -490,40 +527,63 @@ func (s *MedicalSystem) GetAllPatients(stub shim.ChaincodeStubInterface) ([]asse
 // GetMedicalRecord /* Get the patient's record(s) by patient's ID */
 func (s *MedicalSystem) GetMedicalRecord(stub shim.ChaincodeStubInterface,
 	patientID string) ([]asset.Record, error) {
+	var queryRes shim.StateQueryIteratorInterface
+	var err error
 	if len(patientID) == 0 {
-		queryRes, err := stub.GetStateByPartialCompositeKey(utils.PATIENT_RECORD_STATE_KEY_PREFIX,
+		queryRes, err = stub.GetStateByPartialCompositeKey(utils.PATIENT_RECORD_STATE_KEY_PREFIX,
 			[]string{})
-		if err != nil {
-			return nil, fmt.Errorf("failed to read from world state %s", err.Error())
-		}
-		var r []asset.Record
-		for queryRes.HasNext() {
-			t, _ := queryRes.Next()
-			var r1 []asset.Record
-			dec := json.NewDecoder(bytes.NewBuffer(t.GetValue()))
-			dec.UseNumber()
-			_ = dec.Decode(&r1)
-			r = append(r, r1...)
-		}
-		_ = queryRes.Close()
-		return r, nil
+	} else {
+		queryRes, err = stub.GetStateByPartialCompositeKey(utils.PATIENT_RECORD_STATE_KEY_PREFIX,
+			[]string{patientID})
 	}
-	dkey, _ := stub.CreateCompositeKey(utils.PATIENT_RECORD_STATE_KEY_PREFIX, []string{patientID})
-	mr, err := stub.GetState(dkey)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to read from world state. %s", err.Error())
+		return nil, fmt.Errorf("failed to read from world state %s", err.Error())
 	}
+	var r []asset.Record
+	var lastvalue []byte
+	for queryRes.HasNext() {
+		t, _ := queryRes.Next()
+		if len(patientID) == 0 {
+			log.Println("queryAll", string(t.GetValue()))
+		} else {
+			log.Println("queryByID:", patientID, string(t.GetValue()))
+		}
+		if lastvalue == nil {
+			goto newRecord
+		}
+		if bytes.Equal(lastvalue, t.GetValue()) {
+			log.Println("Equal value, skipped")
+			continue
+		}
+	newRecord:
+		var rs []asset.Record
+		dec := json.NewDecoder(bytes.NewBuffer(t.GetValue()))
+		dec.UseNumber()
+		_ = dec.Decode(&rs)
+		if len(r) == 0 {
+			lastvalue = t.GetValue()
+			r = append(r, rs...)
+			log.Println("first append")
+			continue
+		}
+		for i := 0; i < len(rs); i++ {
+			for j := 0; j < len(r); j++ {
+				if !asset.RecordEquals(rs[i], r[j]) {
+					// rs[i] not in r --> append
+					for _, v := range rs[i].Collaborators {
 
-	if mr == nil {
-		return nil, fmt.Errorf("%s does not exist", patientID)
+						if !asset.InCollaboratorList(r[j].Collaborators, v) {
+							r = append(r, rs[i])
+						}
+					}
+				}
+			}
+		}
+
+		lastvalue = t.GetValue()
 	}
-
-	var record []asset.Record
-	// keep the precision
-	dec := json.NewDecoder(bytes.NewBuffer(mr))
-	dec.UseNumber()
-	_ = dec.Decode(&record)
-	return record, nil
+	_ = queryRes.Close()
+	return r, nil
 }
 
 // GetMRByDate /* Get the patient's record(s) by patient's ID and date */

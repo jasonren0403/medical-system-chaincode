@@ -36,10 +36,10 @@ func TestGroupSign(t *testing.T) {
 	sig := member.Sign(cert, c1, c2, c3)
 	sig1 := member1.Sign(cert1, c1, c2, c3)
 	//verify    signature
-	priv.Group.Verify(sig, member.h_)
-	priv.Group.Verify(sig1, member1.h_)
-	priv.Open(sig)
-	priv.Open(sig1)
+	fmt.Println("sig===member.h_?", priv.Group.Verify(sig, member.h_))
+	fmt.Println("sig1===member.h_?", priv.Group.Verify(sig1, member1.h_))
+	fmt.Println("sig is opened to ==>", priv.Open(sig))
+	fmt.Println("sig1 is opened to ==>", priv.Open(sig1))
 }
 
 func BenchmarkGroupSign(b *testing.B) {
