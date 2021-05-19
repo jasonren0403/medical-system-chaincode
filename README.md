@@ -14,17 +14,23 @@
   ```shell
   ./network.sh up
   ```
-  2. 建立频道
+    2. 建立频道
   ```shell
   ./network.sh createChannel -c <channelName>
   ./network.sh createChannel -c fa-jason
   ```
-  3. 安装链码
+    3. 安装链码
   ```shell
   ./network.sh deployCC -ccn <chaincode-name> -ccp <chaincode-filepath> -ccl <chaincode-language>
-  ./network.sh deployCC -ccn MedicalSystem -ccp ../chaincode/MedicalSystem -ccl go
+  ./network.sh deployCC -ccn MedicalSystem -ccp ../chaincode/MedicalSystem -ccl go -c fa-jason
   ```
-  4. 使用结束
+    4. 调用函数
+  ```shell
+  peer chaincode instantiate -C fa-jason
+  peer chaincode invoke -C fa-jason -c '{"function":"initLedger","Args":[]}'
+  peer chaincode query -C fa-jason -c '...'
+  ```
+    5. 使用结束
   ```shell
   ./network.sh down
   ```

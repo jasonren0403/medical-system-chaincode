@@ -23,6 +23,7 @@ type Collaborator struct {
 type Record struct {
 	Collaborators []Collaborator `json:"collaborators"`
 	ID            string         `json:"id" validate:"required"`
+	RecordID      string         `json:"record_id" validate:"required"`
 	Type          string         `json:"type"`
 	Time          string         `json:"time" validate:"required,datetime=2006-1-2 15:04:05"`
 	Content       interface{}    `json:"content"`
@@ -57,7 +58,7 @@ func (r *MRTime) MarshalJSON() ([]byte, error) {
 
 func RecordEquals(r1, r2 Record) bool {
 	return reflect.DeepEqual(r1.Collaborators, r2.Collaborators) && r1.ID == r2.ID &&
-		r1.Signature == r2.Signature && r1.Type == r2.Type && r1.Time == r2.Time
+		r1.Signature == r2.Signature && r1.Type == r2.Type && r1.Time == r2.Time && r1.RecordID == r2.RecordID
 }
 
 /**

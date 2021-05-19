@@ -201,7 +201,6 @@ func TestInitNewRecord(t *testing.T) {
 
 func TestPatientInfoGet(t *testing.T) {
 	patientID := "p1"
-	stub.MockInit(test_UUID, nil)
 	res := GetPatientInfo(patientID)
 	if PRINTRES {
 		str, err := utils.IndentedJson(res, utils.INDENT_SPACE)
@@ -244,7 +243,6 @@ func TestIsValidDoctor(t *testing.T) {
 		},
 		Department: "Dep2",
 	}
-	stub.MockInit(test_UUID, nil)
 	res := IsValidDoctor(doctor)
 	if PRINTRES {
 		str, err := utils.IndentedJson(res, utils.INDENT_SPACE)

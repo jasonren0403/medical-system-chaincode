@@ -353,6 +353,9 @@ func (s *MedicalSystem) InitNewRecord(stub shim.ChaincodeStubInterface, patientI
 	if len(newRec.ID) == 0 {
 		newRec.ID = patientID
 	}
+	if len(newRec.RecordID) == 0 {
+		newRec.RecordID = utils.NewGenerator(32, "string").RandStr()
+	}
 	// the first doctor with one patient defaults to manager role
 	newRec.Collaborators = append(newRec.Collaborators, asset.Collaborator{
 		Doc:  signature,
