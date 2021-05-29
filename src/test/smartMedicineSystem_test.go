@@ -140,17 +140,16 @@ func TestInitLedger(t *testing.T) {
 func TestInitNewRecord(t *testing.T) {
 	patientID := "p3"
 	cnt := map[string]interface{}{
-		"keystr":  "value1",
-		"keybool": true,
+		"value": "abcdcontent",
 	}
 	nRecord := asset.Record{
 		ID:      patientID,
 		Type:    "test2",
-		Time:    "2021-4-14 9:45:11",
+		Time:    time.Now().Format("2006-1-2 15:04:05"),
 		Content: cnt,
 		Signature: asset.Doctor{
 			Person: asset.Person{
-				ID: "doct2", Name: "Banana", Age: 25,
+				ID: "doct1", Name: "Apple", Age: 24,
 			},
 			Department: "Dep1",
 		},
